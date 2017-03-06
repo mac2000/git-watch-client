@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Git Watch</title>
+  </head>
+
+  <body>
+    <div id="status"></div>
+    <h1>Git Watch</h1>
+
+    <form id="authorize" style="display: none">
+      <fieldset>
+        <legend>authorize</legend>
+        <table>
+          <tr>
+            <td>
+              <label for="username">username</label>
+            </td>
+            <td>
+              <input type="email" id="username" name="username" value="" placeholder="username@rabota.ua" required />
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <label for="password">password</label>
+            </td>
+            <td>
+              <input type="password" id="password" name="password" value="" required />
+            </td>
+          </tr>
+          <tr>
+            <td>
+              &nbsp;
+            </td>
+            <td>
+              <input type="submit" />
+            </td>
+          </tr>
+        </table>
+      </fieldset>
+    </form>
+  </body>
+
+  <script>
+    const ReconnectingWebSocket = require('reconnecting-websocket')
+    const decodeToken = token => JSON.parse(window.atob(token.split('.').splice(1, 1).shift().replace('-', '+').replace('_', '/')))
+    const getToken = (username, password) => fetch('http://adjwt.rabota.ua:58083/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }).then(res => res.text())
+    const refreshToken = token => fetch('http://adjwt.rabota.ua:58083/refresh', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).then(res => res.text())
+    const refreshAndSaveToken = token => refreshToken(token).then(token => {
+      user = decodeToken(token)
+      localStorage.setItem('token', token)
+    })
+    const connect = token => {
+      socket = new ReconnectingWebSocket(`wss://gitwatch.azurewebsites.net?access_token=${token}`)
+      socket.onopen = () => {
+        console.log('CONNECTED')
+        document.getElementById('status').innerHTML = 'connected'
+      }
+      socket.onerror = error => console.log('ERROR', error.message, error)
+      socket.onmessage = event => {
+        window.data = JSON.parse(event.data)
+        console.log(data.repository.full_name);
+      }
+      socket.onclose = event => {
+        console.log('DISCONNECTED', event.wasClean ? 'clean' : 'unexpected', event.code, event.reason, event)
+        document.getElementById('status').innerHTML = 'disconnected'
+      }
+    }
+
+    const token = localStorage.getItem('token')
+    let user = token ? decodeToken(token) : null
+    let socket = null
+
+    authorize.addEventListener('submit', event => {
+      event.preventDefault();
+
+      getToken(username.value, password.value).then(token => {
+        localStorage.setItem('token', token)
+        user = decodeToken(token)
+        console.log('token', token)
+        console.log(user)
+        authorize.style.display = 'none'
+        connect(token)
+      })
+    });
+
+    if (!token) {
+      authorize.removeAttribute('style')
+    } else {
+      console.log('token', token)
+      console.log(user)
+      connect(token)
+      refreshAndSaveToken(token)
+    }
+
+
+
+
+
+    const sample = {
+      "push": {
+        "changes": [
+          {
+            "created": false,
+            "closed": false,
+            "commits": [
+              {
+                "date": "2017-03-05T12:13:51+00:00",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/mac2000/sandbox/commits/d2af89c9691cedd6ae6771c2e447de9dddf3452c"
+                  },
+                  "diff": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/diff/d2af89c9691cedd6ae6771c2e447de9dddf3452c"
+                  },
+                  "comments": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d2af89c9691cedd6ae6771c2e447de9dddf3452c/comments"
+                  },
+                  "approve": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d2af89c9691cedd6ae6771c2e447de9dddf3452c/approve"
+                  },
+                  "statuses": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d2af89c9691cedd6ae6771c2e447de9dddf3452c/statuses"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d2af89c9691cedd6ae6771c2e447de9dddf3452c"
+                  },
+                  "patch": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/patch/d2af89c9691cedd6ae6771c2e447de9dddf3452c"
+                  }
+                },
+                "author": {
+                  "raw": "Alexandr Marchenko <marchenko.alexandr@gmail.com>",
+                  "user": {
+                    "type": "user",
+                    "links": {
+                      "html": {
+                        "href": "https://bitbucket.org/mac2000/"
+                      },
+                      "self": {
+                        "href": "https://api.bitbucket.org/2.0/users/mac2000"
+                      },
+                      "avatar": {
+                        "href": "https://bitbucket.org/account/mac2000/avatar/32/"
+                      }
+                    },
+                    "display_name": "Alexandr Marchenko",
+                    "uuid": "{283fb7ee-adf9-4564-a936-1cb6a7436126}",
+                    "username": "mac2000"
+                  }
+                },
+                "hash": "d2af89c9691cedd6ae6771c2e447de9dddf3452c",
+                "type": "commit",
+                "parents": [
+                  {
+                    "type": "commit",
+                    "links": {
+                      "html": {
+                        "href": "https://bitbucket.org/mac2000/sandbox/commits/d406b059499ff66e7394b19eced94f815b033862"
+                      },
+                      "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d406b059499ff66e7394b19eced94f815b033862"
+                      }
+                    },
+                    "hash": "d406b059499ff66e7394b19eced94f815b033862"
+                  }
+                ],
+                "message": "trigger git watch\n"
+              }
+            ],
+            "forced": false,
+            "links": {
+              "html": {
+                "href": "https://bitbucket.org/mac2000/sandbox/branches/compare/d2af89c9691cedd6ae6771c2e447de9dddf3452c..d406b059499ff66e7394b19eced94f815b033862"
+              },
+              "commits": {
+                "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commits?include=d2af89c9691cedd6ae6771c2e447de9dddf3452c&exclude=d406b059499ff66e7394b19eced94f815b033862"
+              },
+              "diff": {
+                "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/diff/d2af89c9691cedd6ae6771c2e447de9dddf3452c..d406b059499ff66e7394b19eced94f815b033862"
+              }
+            },
+            "old": {
+              "type": "branch",
+              "links": {
+                "html": {
+                  "href": "https://bitbucket.org/mac2000/sandbox/branch/master"
+                },
+                "commits": {
+                  "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commits/master"
+                },
+                "self": {
+                  "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/refs/branches/master"
+                }
+              },
+              "target": {
+                "date": "2017-03-05T12:12:56+00:00",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/mac2000/sandbox/commits/d406b059499ff66e7394b19eced94f815b033862"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d406b059499ff66e7394b19eced94f815b033862"
+                  }
+                },
+                "author": {
+                  "raw": "Alexandr Marchenko <marchenko.alexandr@gmail.com>",
+                  "user": {
+                    "type": "user",
+                    "links": {
+                      "html": {
+                        "href": "https://bitbucket.org/mac2000/"
+                      },
+                      "self": {
+                        "href": "https://api.bitbucket.org/2.0/users/mac2000"
+                      },
+                      "avatar": {
+                        "href": "https://bitbucket.org/account/mac2000/avatar/32/"
+                      }
+                    },
+                    "display_name": "Alexandr Marchenko",
+                    "uuid": "{283fb7ee-adf9-4564-a936-1cb6a7436126}",
+                    "username": "mac2000"
+                  }
+                },
+                "hash": "d406b059499ff66e7394b19eced94f815b033862",
+                "type": "commit",
+                "parents": [
+                  {
+                    "type": "commit",
+                    "links": {
+                      "html": {
+                        "href": "https://bitbucket.org/mac2000/sandbox/commits/fff957a42db77f7f24bfdf2a8070ae2902372700"
+                      },
+                      "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/fff957a42db77f7f24bfdf2a8070ae2902372700"
+                      }
+                    },
+                    "hash": "fff957a42db77f7f24bfdf2a8070ae2902372700"
+                  }
+                ],
+                "message": "trigger git watch\n"
+              },
+              "name": "master"
+            },
+            "truncated": false,
+            "new": {
+              "type": "branch",
+              "links": {
+                "html": {
+                  "href": "https://bitbucket.org/mac2000/sandbox/branch/master"
+                },
+                "commits": {
+                  "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commits/master"
+                },
+                "self": {
+                  "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/refs/branches/master"
+                }
+              },
+              "target": {
+                "date": "2017-03-05T12:13:51+00:00",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/mac2000/sandbox/commits/d2af89c9691cedd6ae6771c2e447de9dddf3452c"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d2af89c9691cedd6ae6771c2e447de9dddf3452c"
+                  }
+                },
+                "author": {
+                  "raw": "Alexandr Marchenko <marchenko.alexandr@gmail.com>",
+                  "user": {
+                    "type": "user",
+                    "links": {
+                      "html": {
+                        "href": "https://bitbucket.org/mac2000/"
+                      },
+                      "self": {
+                        "href": "https://api.bitbucket.org/2.0/users/mac2000"
+                      },
+                      "avatar": {
+                        "href": "https://bitbucket.org/account/mac2000/avatar/32/"
+                      }
+                    },
+                    "display_name": "Alexandr Marchenko",
+                    "uuid": "{283fb7ee-adf9-4564-a936-1cb6a7436126}",
+                    "username": "mac2000"
+                  }
+                },
+                "hash": "d2af89c9691cedd6ae6771c2e447de9dddf3452c",
+                "type": "commit",
+                "parents": [
+                  {
+                    "type": "commit",
+                    "links": {
+                      "html": {
+                        "href": "https://bitbucket.org/mac2000/sandbox/commits/d406b059499ff66e7394b19eced94f815b033862"
+                      },
+                      "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox/commit/d406b059499ff66e7394b19eced94f815b033862"
+                      }
+                    },
+                    "hash": "d406b059499ff66e7394b19eced94f815b033862"
+                  }
+                ],
+                "message": "trigger git watch\n"
+              },
+              "name": "master"
+            }
+          }
+        ]
+      },
+      "repository": {
+        "website": "",
+        "full_name": "mac2000/sandbox",
+        "links": {
+          "html": {
+            "href": "https://bitbucket.org/mac2000/sandbox"
+          },
+          "self": {
+            "href": "https://api.bitbucket.org/2.0/repositories/mac2000/sandbox"
+          },
+          "avatar": {
+            "href": "https://bitbucket.org/mac2000/sandbox/avatar/32/"
+          }
+        },
+        "scm": "git",
+        "name": "sandbox",
+        "type": "repository",
+        "owner": {
+          "type": "user",
+          "links": {
+            "html": {
+              "href": "https://bitbucket.org/mac2000/"
+            },
+            "self": {
+              "href": "https://api.bitbucket.org/2.0/users/mac2000"
+            },
+            "avatar": {
+              "href": "https://bitbucket.org/account/mac2000/avatar/32/"
+            }
+          },
+          "display_name": "Alexandr Marchenko",
+          "uuid": "{283fb7ee-adf9-4564-a936-1cb6a7436126}",
+          "username": "mac2000"
+        },
+        "is_private": true,
+        "uuid": "{3a9ad937-0ff8-4529-8d2e-5e494e3bb913}"
+      },
+      "actor": {
+        "type": "user",
+        "links": {
+          "html": {
+            "href": "https://bitbucket.org/mac2000/"
+          },
+          "self": {
+            "href": "https://api.bitbucket.org/2.0/users/mac2000"
+          },
+          "avatar": {
+            "href": "https://bitbucket.org/account/mac2000/avatar/32/"
+          }
+        },
+        "display_name": "Alexandr Marchenko",
+        "uuid": "{283fb7ee-adf9-4564-a936-1cb6a7436126}",
+        "username": "mac2000"
+      }
+    };
+
+
+      // const {ipcRenderer} = require('electron')
+    // let app = require('electron').remote
+    // let dialog = app.dialog
+    // let fs = require('fs')
+
+    // document.getElementById('demo').addEventListener('click', event => {
+    //   event.preventDefault()
+
+    //   dialog.showOpenDialog({properties: ['openDirectory', 'multiSelections']}, dirs => console.log(dirs))
+
+    //   // dialog.showOpenDialog(files => {
+    //   //   files.forEach(file => {
+    //   //     console.log(file)
+    //   //     fs.readFile(file, 'utf-8', (err, data) => console.log(err ? err : data))
+    //   //   })
+    //   // })
+    // })
+
+
+
+    // // let gitlog = require('gitlog')
+    // // options = {
+    // //   repo: 'C:/dev/fedor',
+    // //   number: 20
+    // // }
+    // // gitlog(options, (err, log) => console.log(err ? err : log))
+  </script>
+
+</html>
